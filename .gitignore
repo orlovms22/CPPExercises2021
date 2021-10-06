@@ -1,5 +1,7 @@
 **/*_cl.h
 .idea
+.vs
+.out
 build
 cmake-build*
 opencv*.dll
