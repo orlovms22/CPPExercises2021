@@ -6,6 +6,7 @@
 
 #include <opencv2/imgproc.hpp>
 
+//#define ENABLE_FILTER
 
 void test(std::string name) {
     std::cout << "Processing image " << name << ".jpg..." << std::endl;
@@ -56,16 +57,37 @@ void test(std::string name) {
     }
 
     // заменим каждый пиксель с яркости X на яркость X*255.0f/max_accumulated (т.е. уменьшим диапазон значений)
-    cv::imwrite("../../../../lesson08/resultsData/" + name + "_2_hough_normalized.png", hough*255.0f/max_accumulated);
+    cv::imwrite("../../../../lesson08/resultsData/" + name + "_2_hough_normalized.png", hough * 255.0f / max_accumulated);
 
+#ifdef ENABLE_FILTER
+    cv::Mat blurredHough;
+    //int blurX = 5; // ширина сглаживания - по оси X
+    //int blurY = 5; // высота сглаживания - по оси Y
+    //cv::blur(hough, blurredHough, cv::Size(blurX, blurY)); // сглаживаем пространство Хафа (сглаженный результат в blurredHough)
+    cv::Mat kern(3, 3, CV_32FC1);
+    for (int i = 0; i < kern.rows; i++)
+    {
+        for (int j = 0; j < kern.cols; j++)
+        {
+            kern.at<float>(i, j) = -1;
+        }
+    }
+    kern.at<float>(1, 1) = 8;
+
+    cv::filter2D(hough, blurredHough, hough.depth(), kern);
+    hough = blurredHough; // заменяем сырое пространство Хафа на сглаженное
+    hough = erode(hough, 1, max_accumulated);
+    // и сохраянем его визуализацию на диск:
+    cv::imwrite("../../../../lesson08/resultsData/" + name + "_3_hough_blurred.png", hough * 255.0f / max_accumulated);
+#endif
 // TODO здесь может быть полезно сгладить пространство Хафа, см. комментарии на сайте - https://www.polarnick.com/blogs/239/2021/school239_11_2021_2022/2021/11/09/lesson9-hough2-interpolation-extremum-detection.html
 
 // TODO реализуйте функцию которая ищет и перечисляет локальные экстремумы - findLocalExtremums(...)
     std::vector<PolarLineExtremum> lines = findLocalExtremums(hough);
 
 // TODO реализуйте фильтрацию прямых - нужно оставлять только те прямые, у кого много голосов (реализуйте функцию filterStrongLines(...) ):
-    double thresholdFromWinner = 0.8; // хотим оставить только те прямые у кого не менее половины голосов по сравнению с самой популярной прямой
-    lines = filterStrongLines(lines, thresholdFromWinner);
+    double thresholdFromWinner = 0.4; // хотим оставить только те прямые у кого не менее половины голосов по сравнению с самой популярной прямой
+    lines = filterStrongLines(lines, thresholdFromWinner, 0.05 * hough.rows);
 
     std::cout << "Found " << lines.size() << " extremums:" << std::endl;
     for (int i = 0; i < lines.size(); ++i) {

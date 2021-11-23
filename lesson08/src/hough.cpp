@@ -65,6 +65,8 @@ cv::Mat buildHough(cv::Mat sobel) {// единственный аргумент 
                     //accumulator.at<float>(r0, theta0) += strength;
                     for (int r = fromR; r < toR; r++)
                     {
+                        //accumulator.at<float>(r, theta0) += strength / (toR - fromR);
+                        //accumulator.at<float>(r, theta1) += strength / (toR - fromR);
                         accumulator.at<float>(r, theta0) += strength;
                         accumulator.at<float>(r, theta1) += strength;
                         /*float k = (r - fromR) / (toR - fromR);
@@ -122,7 +124,7 @@ std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace)
     return winners;
 }
 
-std::vector<PolarLineExtremum> filterStrongLines(std::vector<PolarLineExtremum> allLines, double thresholdFromWinner)
+std::vector<PolarLineExtremum> filterStrongLines(std::vector<PolarLineExtremum> allLines, double thresholdFromWinner, int dist)
 {
     std::vector<PolarLineExtremum> strongLines;
 
@@ -136,9 +138,51 @@ std::vector<PolarLineExtremum> filterStrongLines(std::vector<PolarLineExtremum> 
         if (allLines[i].votes > max_votes * thresholdFromWinner)
         {
             PolarLineExtremum line(allLines[i].theta, allLines[i].r, allLines[i].votes);
-            strongLines.push_back(line);
+            bool flag = true;
+            int index = 0;
+            for (int j = strongLines.size() - 1; j >= 0; j--)
+            {
+                if ((abs(strongLines[j].theta - line.theta) < 5 || abs(strongLines[j].theta - line.theta + 360) < 5) && abs(strongLines[j].r - line.r) < dist)
+                {
+                    flag = false;
+                    index = j;
+                    break;
+                }
+            }
+            if (flag) strongLines.push_back(line);
+            else
+            {
+                strongLines[index].theta = (strongLines[index].theta * strongLines[index].votes + line.theta * line.votes) / (strongLines[index].votes + line.votes);
+                strongLines[index].r = (strongLines[index].r * strongLines[index].votes + line.r * line.votes) / (strongLines[index].votes + line.votes);
+            }
         }
     }
 
     return strongLines;
+}
+
+cv::Mat erode(cv::Mat mask, uint8_t r, float max_accamulated)
+{
+    cv::Mat mask_cp = mask.clone();
+    for (int i = 0; i < mask.rows; i++)
+    {
+        for (int j = 0; j < mask.cols; j++)
+        {
+            if (mask.at<float>(i, j) > max_accamulated/2)
+            {
+                for (int dx = -r; dx < r; dx++)
+                {
+                    for (int dy = -r; dy < r; dy++)
+                    {
+                        if (i + dx > 0 && i + dx < mask.rows && j + dy > 0 && j + dy < mask.cols)
+                        {
+                            mask_cp.at<float>(i, j) *= mask.at<float>(i + dx, j + dy) / max_accamulated;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return mask_cp;
 }
