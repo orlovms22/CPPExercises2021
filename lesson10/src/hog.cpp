@@ -1,5 +1,5 @@
 #include "hog.h"
-
+#include <iostream>
 #include <libutils/rasserts.h>
 
 #include <opencv2/imgproc.hpp>
@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+#define pow2(x) (x) * (x)
 
 HoG buildHoG(cv::Mat grad_x, cv::Mat grad_y) {
     rassert(grad_x.type() == CV_32FC1, 2378274892374008);
@@ -18,6 +19,8 @@ HoG buildHoG(cv::Mat grad_x, cv::Mat grad_y) {
     int width = grad_x.cols;
 
     HoG hog;
+    hog.resize(NBINS);
+    fill(hog.begin(), hog.end(), 0);
 
     // TODO
     // 1) увеличьте размер вектора hog до NBINS (ведь внутри это просто обычный вектор вещественных чисел)
@@ -28,22 +31,31 @@ HoG buildHoG(cv::Mat grad_x, cv::Mat grad_y) {
     // рекомендую воспользоваться atan2(dy, dx) - он возвращает радианы - https://en.cppreference.com/w/cpp/numeric/math/atan2
     // прочитайте по ссылке на документацию (в прошлой строке) - какой диапазон значений у угла-результата atan2 может быть?
     // 5) внесите его силу как голос за соответствующую его углу корзину
+    double sum = 0;
     for (int j = 0; j < height; ++j) {
         for (int i = 0; i < width; ++i) {
             float dx = grad_x.at<float>(j, i);
             float dy = grad_y.at<float>(j, i);
             float strength = sqrt(dx * dx + dy * dy);
+            double angle = atan2(dy, dx) * 180 / M_PI;
+            if (angle < 0) angle += 360;
 
             if (strength < 10) // пропускайте слабые градиенты, это нужно чтобы игнорировать артефакты сжатия в jpeg (например в line01.jpg пиксели не идеально белые/черные, есть небольшие отклонения)
                 continue;
 
             // TODO рассчитайте в какую корзину нужно внести голос
-            int bin = -1;
+            int bin = int(angle) / int(360 / NBINS);
 
             rassert(bin >= 0, 3842934728039);
             rassert(bin < NBINS, 34729357289040);
             hog[bin] += strength;
+            sum += strength;
         }
+    }
+
+    for (int bin = 0; bin < NBINS; bin++)
+    {
+        hog[bin] /= sum;
     }
 
     rassert(hog.size() == NBINS, 23478937290010);
@@ -73,20 +85,16 @@ HoG buildHoG(cv::Mat originalImg) {
 // TODO реализуйте функцию которая позволит выводить гистограмму в консоль через std::cout << myHOG << std::endl;
 // Пример корректного вывода (выводите не само значение накопленных голосов за каждое направление, а процент от общей суммы голосов):
 // HoG[22.5=0%, 67.5=78%, 112.5=21%, 157.5=0%, 202.5=0%, 247.5=0%, 292.5=0%, 337.5=0%]
-std::ostream &operator<<(std::ostream &os, const HoG &hog) {
+std::ostream& operator<<(std::ostream& os, const HoG& hog) {
     rassert(hog.size() == NBINS, 234728497230016);
 
     // TODO
     os << "HoG[";
-    for (int bin = 0; bin < NBINS; ++bin) {
-//        os << angleInDegrees << "=" << percentage << "%, ";
+    for (int bin = 0; bin < NBINS; bin++) {
+        os << (double(bin) + 0.5) * 360 / NBINS << "=" << int(hog[bin] * 100) << "%, ";
     }
     os << "]";
     return os;
-}
-
-double pow2(double x) {
-    return x * x;
 }
 
 // TODO реализуйте функцию которая по двум гистограммам будет говорить насколько они похожи
@@ -94,10 +102,16 @@ double distance(HoG a, HoG b) {
     rassert(a.size() == NBINS, 237281947230077);
     rassert(b.size() == NBINS, 237281947230078);
 
+    double sum = 0;
+    for (int bin = 0; bin < NBINS; bin++)
+    {
+        sum += pow2(a[bin] - b[bin]);
+    }
+
     // TODO рассчитайте декартово расстояние (т.е. корень из суммы квадратов разностей)
     // подумайте - как можно добавить независимость (инвариантность) гистаграммы градиентов к тому насколько контрастная или блеклая картинка?
     // подсказка: на контрастной картинке все градиенты гораздо сильнее, а на блеклой картинке все градиенты гораздо слабее, но пропорции между градиентами (распроцентовка) не изменны!
 
-    double res = 0.0;
+    double res = sqrt(sum);
     return res;
 }

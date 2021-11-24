@@ -8,7 +8,7 @@
 
 
 #define NSAMPLES_PER_LETTER 5
-#define LETTER_DIR_PATH std::string("lesson10/generatedData/letters")
+#define LETTER_DIR_PATH std::string("../../../../lesson10/generatedData/letters")
 
 
 int randFont() {
@@ -115,15 +115,22 @@ void experiment1() {
     for (char letter = 'a'; letter <= 'z'; ++letter) {
         std::string letterDir = LETTER_DIR_PATH + "/" + letter;
 
+        double distMax = 0;
+        double distSum = 0;
+        double distN = 0;
         for (int sampleA = 1; sampleA <= NSAMPLES_PER_LETTER; ++sampleA) {
             for (int sampleB = sampleA + 1; sampleB <= NSAMPLES_PER_LETTER; ++sampleB) {
                 cv::Mat a = cv::imread(letterDir + "/" + std::to_string(sampleA) + ".png");
                 cv::Mat b = cv::imread(letterDir + "/" + std::to_string(sampleB) + ".png");
                 HoG hogA = buildHoG(a);
-                // TODO
+                HoG hogB = buildHoG(b);
+                double dist = distance(hogA, hogB);
+                distMax = MAX(distMax, dist);
+                distSum += dist;
+                distN++;
             }
         }
-//        std::cout << "Letter " << letter << ": max=" << distMax << ", avg=" << (distSum / distN) << std::endl;
+        std::cout << "Letter " << letter << ": max=" << distMax << ", avg=" << (distSum / distN) << std::endl;
     }
 }
 
@@ -137,17 +144,37 @@ void experiment2() {
     //  - Можно ли с этим что-то сделать?
 
     std::cout << "________Experiment 2________" << std::endl;
+    double absoluteMin = 1;
     for (char letterA = 'a'; letterA <= 'z'; ++letterA) {
         std::string letterDirA = LETTER_DIR_PATH + "/" + letterA;
 
+        double distMax = 0;
+        char letterMax;
+        double distMin = 1;
+        char letterMin;
         for (char letterB = 'a'; letterB <= 'z'; ++letterB) {
             if (letterA == letterB) continue;
-
-            // TODO
+            cv::Mat a = cv::imread(LETTER_DIR_PATH + "/" + letterA + "/" + std::to_string(1) + ".png");
+            cv::Mat b = cv::imread(LETTER_DIR_PATH + "/" + letterB + "/" + std::to_string(1) + ".png");
+            HoG hogA = buildHoG(a);
+            HoG hogB = buildHoG(b);
+            double dist = distance(hogA, hogB);
+            if (dist < distMin)
+            {
+                distMin = dist;
+                letterMin = letterB;
+            }
+            if (dist > distMax)
+            {
+                distMax = dist;
+                letterMax = letterB;
+            }
         }
+        absoluteMin = MIN(absoluteMin, distMin);
 
-//        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
+        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
     }
+    std::cout << "Absolute min=" << absoluteMin << std::endl;
 }
 
 
