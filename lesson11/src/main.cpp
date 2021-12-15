@@ -157,6 +157,9 @@ void finalExperiment(std::string name, std::string k) {
         int yBottom = (128 / 2) + (textPixelSize.height / 2);
         cv::Point coordsOfLeftBorromCorner(xLeft, yBottom);
         cv::putText(letter_img, letter_s, coordsOfLeftBorromCorner, cv::FONT_HERSHEY_COMPLEX_SMALL, 3.0, cv::Scalar(0, 0, 0), 3);
+        cv::cvtColor(letter_img, letter_img, cv::COLOR_BGR2GRAY);
+        cv::adaptiveThreshold(letter_img, letter_img, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 81, 20);
+        cv::cvtColor(letter_img, letter_img, cv::COLOR_GRAY2BGR);
 
         HoG symbol_hog = buildHoG(letter_img);
         alphabet.push_back(symbol_hog);
@@ -198,7 +201,7 @@ void finalExperiment(std::string name, std::string k) {
 
 int main() {
     try {
-        finalExperiment("alphabet", "3_gradient");
+        finalExperiment("alphabet", "3_gradient_pols");
         test("alphabet", "3_gradient");
 
         // TODO 50: обязательно получите результат на других картинках - прямо в цикле все их обработайте:
