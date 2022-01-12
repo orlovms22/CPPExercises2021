@@ -6,12 +6,14 @@
 
 #include <random>
 
+#define sq(x) (x)*(x)
+
 double Line::getYFromX(double x)
 {
     rassert(b != 0.0, 2734832748932790061); // случай вертикальной прямой не рассматривается для простоты
 
     // TODO 01
-    double y = 1.0;
+    double y = -(a * x + c) / b;
 
     return y;
 }
@@ -29,14 +31,14 @@ std::vector<cv::Point2f> Line::generatePoints(int n,
     // TODO 01 доделайте этот метод:
     //  - поправьте в коде ниже количество точек которые создадутся
     //  - диапазон x в котором создаются точки
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < n; i++) {
         // это правило генерации случайных чисел - указание какие мы хотим координаты x - равномерно распределенные в диапазоне от fromX  до toX
-        std::uniform_real_distribution<> xDistribution(2.0, 5.0);
+        std::uniform_real_distribution<> xDistribution(fromX, toX);
 
         double x = xDistribution(randomGenerator);
 
         // найдем идеальную координату y для данной координаты x:
-        double idealY = x; // TODO 01 воспользуйтесь методом getYFromX (сначала его надо доделать)
+        double idealY = getYFromX(x); // TODO 01 воспользуйтесь методом getYFromX (сначала его надо доделать)
 
         // указание какую мы хотим координату y - распределенную около idealY в соответствии с распределением Гаусса (т.н. нормальное распределение)
         std::normal_distribution<> yDistribution(idealY, gaussianNoiseSigma);
@@ -59,7 +61,7 @@ void plotPoints(cv::Mat &img, std::vector<cv::Point2f> points, double scale, cv:
         // если картинка пустая - нужно увеличить картинку до размера в который впишутся все точки
         float maxX = 0.0f;
         float maxY = 0.0f;
-        for (int i = 0; i < points.size(); ++i) {
+        for (int i = 0; i < points.size(); i++) {
             maxX = std::max(maxX, points[i].x);
             maxY = std::max(maxY, points[i].y);
         }
@@ -86,9 +88,9 @@ void plotPoints(cv::Mat &img, std::vector<cv::Point2f> points, double scale, cv:
         rassert(img.type() == CV_8UC3, 34237849200017);
     }
 
-    for (int i = 0; i < points.size(); ++i) {
+    for (int i = 0; i < points.size(); i++) {
         // TODO 02 и обратите внимание что делает scale (он указывает масштаб графика)
-        cv::circle(img, points[i] * scale, 5, cv::Scalar(255, 255, 255), 2);
+        cv::circle(img, points[i] * scale, 5, color, 2);
     }
 }
 
@@ -99,7 +101,9 @@ void Line::plot(cv::Mat &img, double scale, cv::Scalar color)
     rassert(img.type() == CV_8UC3, 34237849200055);
 
     // TODO 03 реализуйте отрисовку прямой (воспользуйтесь getYFromX и cv::line(img, cv::Point(...), cv::Point(...), color)), будьте осторожны и не забудьте учесть scale!
-    // cv::line(img, cv::Point(...), cv::Point(...), color);
+    cv::Point point1(0, getYFromX(0));
+    cv::Point point2(img.cols / scale, getYFromX(img.cols / scale));
+    cv::line(img, point1 * scale, point2 * scale, color);
 }
 
 Line fitLineFromTwoPoints(cv::Point2f a, cv::Point2f b)
@@ -107,13 +111,39 @@ Line fitLineFromTwoPoints(cv::Point2f a, cv::Point2f b)
     rassert(a.x != b.x, 23892813901800104); // для упрощения можно считать что у нас не бывает вертикальной прямой
 
     // TODO 04 реализуйте построение прямой по двум точкам
-    return Line(0.0, -1.0, 2.0);
+    double A = (b.y - a.y) / (b.x - a.x);
+    double B = -1.0f;
+    double C = -(A * a.x + B * a.y);
+    return Line(A, B, C);
 }
 
 Line fitLineFromNPoints(std::vector<cv::Point2f> points)
 {
     // TODO 05 реализуйте построение прямой по многим точкам (такое чтобы прямая как можно лучше учитывала все точки)
-    return Line(0.0, -1.0, 2.0);
+    double min_dist = DBL_MAX;
+    int i0 = 0;
+    int j0 = 0;
+    for (int i = 0; i < points.size(); i++) {
+        cv::Point2f a = points[i];
+        for (int j = 0; j < points.size(); j++) {
+            if (i == j) continue;
+            cv::Point2f b = points[j];
+            Line lineI = fitLineFromTwoPoints(a, b); // TODO 04 реализуйте построение прямой по двум точкам
+            double dist = 0.0f;
+            for (int k = 0; k < points.size(); k++)
+            {
+                dist += sq(abs(lineI.a * points[k].x + lineI.b * points[k].y + lineI.c) / sqrt(sq(lineI.a) + sq(lineI.b)));
+            }
+            dist = sqrt(dist);
+            if (dist < min_dist)
+            {
+                min_dist = dist;
+                i0 = i;
+                j0 = j;
+            }
+        }
+    }
+    return fitLineFromTwoPoints(points[i0], points[j0]);
 }
 
 Line fitLineFromNNoisyPoints(std::vector<cv::Point2f> points)

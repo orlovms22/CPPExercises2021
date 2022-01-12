@@ -10,7 +10,7 @@ void test1() {
     cv::Scalar red(0, 0, 255);
     cv::Scalar blueRed(255, 0, 255);
 
-    std::string results = "lesson12/resultsData/";
+    std::string results = "../../../../lesson12/resultsData/";
     if (!std::filesystem::exists(results)) { // если папка еще не создана
         std::filesystem::create_directory(results); // то создаем ее
     }
@@ -27,7 +27,7 @@ void test1() {
     double sigma = 0.5;
     std::vector<cv::Point2f> pointsNearLine = line.generatePoints(n, fromX, toX, sigma); // TODO 01 доделайте этот метод
     std::cout << pointsNearLine.size() << " points: ";
-    for (int i = 0; i < pointsNearLine.size(); ++i) {
+    for (int i = 0; i < pointsNearLine.size(); i++) {
         std::cout << pointsNearLine[i] << ", ";
     }
     std::cout << std::endl;
@@ -39,7 +39,7 @@ void test1() {
 
     cv::imwrite(results + "test1_1points_and_line.png", plot);
 
-    for (int i = 0; i + 1 < pointsNearLine.size(); ++i) {
+    for (int i = 0; i < pointsNearLine.size() - 1; i++) {
         cv::Point2f a = pointsNearLine[i];
         cv::Point2f b = pointsNearLine[i + 1];
         Line lineI = fitLineFromTwoPoints(a, b); // TODO 04 реализуйте построение прямой по двум точкам
