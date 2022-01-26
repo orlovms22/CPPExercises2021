@@ -1,7 +1,7 @@
 project(lesson11splitSymbols)
 
 
-find_package(OpenCV 3.4.2 REQUIRED)
+find_package(OpenCV 4.5.1 REQUIRED)
 # Если эта строчка кидает ошибку - вероятно вы забыли установить и указать для системы сборки нашего проекта (CMake) путь к папке установки OpenCV:
 # 1) Скачайте https://github.com/opencv/opencv/releases/download/4.5.1/opencv-4.5.1-vc14_vc15.exe (это прямая ссылка на файл опубликованный в репозитории OpenCV - https://github.com/opencv/opencv/releases/tag/4.5.1 )
 # 2) Запустите и распакуйте в любую папку (без русских букв в пути), рекомендуется выбрать папкой корень диска C:\ (и после распаковки там появится папка C:\opencv)
