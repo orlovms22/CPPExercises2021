@@ -9,18 +9,7 @@
 
 #include <libutils/rasserts.h>
 
-
-std::vector<cv::Point2f> filterPoints(std::vector<cv::Point2f> points, std::vector<unsigned char> matchIsGood) {
-    rassert(points.size() == matchIsGood.size(), 234827348927016);
-
-    std::vector<cv::Point2f> goodPoints;
-    for (int i = 0; i < matchIsGood.size(); ++i) {
-        if (matchIsGood[i]) {
-            goodPoints.push_back(points[i]);
-        }
-    }
-    return goodPoints;
-}
+#include "collage.h"
 
 
 void test1() {
@@ -119,6 +108,7 @@ void test1() {
 
         rassert(matches10[i][0].distance <= matches10[i][1].distance, 328493778); // давайте явно проверим что расстояние для этой второй точки - не меньше чем для первой точки
     }
+
     {
         std::vector<double> distances;
         for (int i = 0; i < matches10.size(); ++i) {
@@ -271,6 +261,21 @@ void test1() {
 void test2() {
     std::string caseName = "2_hiking2";
 
+    std::string path = "../../../../lesson13/data/" + caseName + "/";
+    std::string results = "../../../../lesson13/resultsData/" + caseName + "/";
+
+    if (!std::filesystem::exists(results)) { // если папка для результатов еще не создана
+        std::filesystem::create_directory(results); // то создаем ее
+    }
+
+    cv::Mat img0 = cv::imread(path + "hiking0.png");
+    cv::Mat img1 = cv::imread(path + "hiking1.png");
+    rassert(!img0.empty() && !img1.empty(), 2389827851080019);
+    rassert(img0.type() == CV_8UC3, 2389827851080020);
+    rassert(img1.type() == CV_8UC3, 2389827851080021);
+
+    collage(img0, img1, results);
+
     // TODO можете скопипастить сюда test1, можете попробовать вытащить все то что было там - в функции, на ваш выбор
     // обратите внимание что теперь результирующую картинку-коллаж-панораму хочется делать большего размера чем оригинальную
 }
@@ -278,7 +283,23 @@ void test2() {
 void test3() {
     std::string caseName = "3_hanging2";
 
-    // TODO то же самое
+    std::string path = "../../../../lesson13/data/" + caseName + "/";
+    std::string results = "../../../../lesson13/resultsData/" + caseName + "/";
+
+    std::cout << path << std::endl;
+
+    if (!std::filesystem::exists(results)) { // если папка для результатов еще не создана
+        std::filesystem::create_directory(results); // то создаем ее
+    }
+
+    cv::Mat img0 = cv::imread(path + "hanging0.png");
+    cv::Mat img1 = cv::imread(path + "hanging1.png");
+    
+    rassert(!img0.empty() && !img1.empty(), 2389827851080019);
+    rassert(img0.type() == CV_8UC3, 2389827851080020);
+    rassert(img1.type() == CV_8UC3, 2389827851080021);
+
+    collage(img0, img1, results);
 }
 
 void test4() {
@@ -291,9 +312,9 @@ void test4() {
 
 int main() {
     try {
-        test1(); // TODO обязательное
-//        test2(); // TODO обязательное
-//        test3(); // TODO обязательное
+        //test1(); // TODO обязательное
+        //test2(); // TODO обязательное
+        test3(); // TODO обязательное
 
 //        test4(); // TODO добровольный бонус
 
