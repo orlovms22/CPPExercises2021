@@ -79,6 +79,7 @@ void run() {
             std::vector<cv::KeyPoint> keypoints0, keypoints1; // здесь будет храниться список ключевых точек
             cv::Mat descriptors0, descriptors1; // здесь будут зраниться дескрипторы этих ключевых точек
             detector->detectAndCompute(currentFrame, cv::noArray(), keypoints0, descriptors0);
+            cv::resize(imgForDetection, imgForDetection, imgToDraw.size());
             detector->detectAndCompute(imgForDetection, cv::noArray(), keypoints1, descriptors1);
 
             // TODO детектируйте и постройте дескрипторы у ключевых точек

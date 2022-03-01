@@ -22,6 +22,15 @@ struct Edge {
     {}
 };
 
+struct Vertex {
+    int path_length;
+    bool flag;
+    int father;
+
+    Vertex() : path_length(std::numeric_limits<int>::max()), flag(false), father(-1)
+    {}
+};
+
 void run() {
     // https://codeforces.com/problemset/problem/20/C?locale=ru
     // Не требуется сделать оптимально быструю версию, поэтому если вы получили:
@@ -57,22 +66,44 @@ void run() {
 
     const int INF = std::numeric_limits<int>::max();
 
-    std::vector<int> distances(nvertices, INF);
-    // TODO ...
+    std::vector<Vertex> vertices(nvertices);
+    vertices[0].path_length = 0;
 
-//    while (true) {
-//
-//    }
+    while (true) {
+        int min_path = INF;
+        int idx = -1;
+        for (int i = 0; i < vertices.size(); i++) {
+            if (vertices[i].path_length != INF && !vertices[i].flag && vertices[i].path_length < min_path)
+            {
+                min_path = vertices[i].path_length;
+                idx = i;
+            }
+        }
+        if (idx == -1) break;
 
-//    if (...) {
-//        ...
-//        for (...) {
-//            std::cout << (path[i] + 1) << " ";
-//        }
-//        std::cout << std::endl;
-//    } else {
-//        std::cout << -1 << std::endl;
-//    }
+        for (int i = 0; i < edges_by_vertex[idx].size(); i++) {
+            int new_path = vertices[idx].path_length + edges_by_vertex[idx][i].w;
+            if (vertices[edges_by_vertex[idx][i].v].path_length > new_path) {
+                vertices[edges_by_vertex[idx][i].v].path_length = new_path;
+                vertices[edges_by_vertex[idx][i].v].father = idx;
+            }
+        }
+        vertices[idx].flag = true;
+    }
+
+    if (vertices[finish].path_length != INF) {
+        std::vector<int> path;
+        for (int i = finish; i != start; i = vertices[i].father) {
+            path.insert(path.begin(), i);
+        }
+        path.insert(path.begin(), start);
+        for (int i = 0; i < path.size(); i++) {
+            std::cout << (path[i] + 1) << " ";
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << -1 << std::endl;
+    }
 }
 
 int main() {
