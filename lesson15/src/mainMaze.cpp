@@ -73,22 +73,22 @@ void run(int mazeNumber) {
             // TODO добавьте соотвтетсвующие этому пикселю ребра
             if (i > 0) {
                 int side_vertex_id = encodeVertex(j, i - 1, maze.rows, maze.cols);
-                int w = (color == maze.at<cv::Vec3b>(j, i - 1)) ? 0 : INF;
+                int w = (color == maze.at<cv::Vec3b>(j, i - 1)) ? 1 : INF;
                 edges_by_vertex[vertex_id].push_back(Edge(vertex_id, side_vertex_id, w));
             }
             if (j > 0) {
                 int side_vertex_id = encodeVertex(j - 1, i, maze.rows, maze.cols);
-                int w = (color == maze.at<cv::Vec3b>(j - 1, i)) ? 0 : INF;
+                int w = (color == maze.at<cv::Vec3b>(j - 1, i)) ? 1 : INF;
                 edges_by_vertex[vertex_id].push_back(Edge(vertex_id, side_vertex_id, w));
             }
             if (i < maze.cols - 1) {
                 int side_vertex_id = encodeVertex(j, i + 1, maze.rows, maze.cols);
-                int w = (color == maze.at<cv::Vec3b>(j, i + 1)) ? 0 : INF;
+                int w = (color == maze.at<cv::Vec3b>(j, i + 1)) ? 1 : INF;
                 edges_by_vertex[vertex_id].push_back(Edge(vertex_id, side_vertex_id, w));
             }
             if (j < maze.rows - 1) {
                 int side_vertex_id = encodeVertex(j + 1, i, maze.rows, maze.cols);
-                int w = (color == maze.at<cv::Vec3b>(j + 1, i)) ? 0 : INF;
+                int w = (color == maze.at<cv::Vec3b>(j + 1, i)) ? 1 : INF;
                 edges_by_vertex[vertex_id].push_back(Edge(vertex_id, side_vertex_id, w));
             }
         }
@@ -104,6 +104,9 @@ void run(int mazeNumber) {
     } else if (mazeNumber == 5) { // Лабиринт в большом разрешении, добровольный (на случай если вы реализовали быструю Дейкстру с приоритетной очередью)
         start = encodeVertex(1200, 1200, maze.rows, maze.cols);
         finish = encodeVertex(1200, 1200, maze.rows, maze.cols);
+    } else if (mazeNumber == 6) { // Первые три лабиринта очень похожи но кое чем отличаются...
+        start = encodeVertex(100, 100, maze.rows, maze.cols);
+        finish = encodeVertex(0, 102, maze.rows, maze.cols);
     } else {
         rassert(false, 324289347238920081);
     }
@@ -129,6 +132,7 @@ void run(int mazeNumber) {
         if (idx == finish) break;
 
         for (int i = 0; i < edges_by_vertex[idx].size(); i++) {
+            if (edges_by_vertex[idx][i].w == INF) continue;
             int new_path = vertices[idx].path_length + edges_by_vertex[idx][i].w;
             if (vertices[edges_by_vertex[idx][i].v].path_length > new_path) {
                 vertices[edges_by_vertex[idx][i].v].path_length = new_path;
@@ -137,7 +141,7 @@ void run(int mazeNumber) {
         }
         cv::Point2i p = decodeVertex(idx, maze.rows, maze.cols);
         window.at<cv::Vec3b>(p.y, p.x) = cv::Vec3b(0, 255, 0);
-        if (count % 1000 == 0) {
+        if (count % 100 == 0) {
             cv::imshow("Maze", window);
             cv::waitKey(1);
         }
@@ -159,6 +163,12 @@ void run(int mazeNumber) {
         for (int i = finish; i != start; i = vertices[i].father) {
             cv::Point2i p = decodeVertex(i, maze.rows, maze.cols);
             window.at<cv::Vec3b>(p.y, p.x) = cv::Vec3b(0, 0, 255);
+            std::cout << p.x << " " << p.y << std::endl;
+            if (count % 100 == 0) {
+                cv::imshow("Maze", window);
+                cv::waitKey(1);
+            }
+            count++;
         }
         cv::Point2i p = decodeVertex(start, maze.rows, maze.cols);
         window.at<cv::Vec3b>(p.y, p.x) = cv::Vec3b(255, 0, 0);
@@ -177,7 +187,7 @@ void run(int mazeNumber) {
 
 int main() {
     try {
-        int mazeNumber = 1;
+        int mazeNumber = 4;
         run(mazeNumber);
 
         return 0;
