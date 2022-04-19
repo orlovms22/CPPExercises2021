@@ -187,7 +187,7 @@ void run(int mazeNumber) {
 
 int main() {
     try {
-        int mazeNumber = 4;
+        int mazeNumber = 6;
         run(mazeNumber);
 
         return 0;
