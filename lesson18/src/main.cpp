@@ -14,6 +14,10 @@
 #include <libutils/fast_random.h>
 
 #define sq(x) (x)*(x)
+#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+
+#define M_SIZE 45
+#define M_HALF 23
 
 // Эта функция говорит нам правда ли пиксель отмаскирован, т.е. отмечен как "удаленный", т.е. белый
 bool isPixelMasked(cv::Mat mask, int j, int i) {
@@ -31,19 +35,31 @@ double pixelQuality(cv::Vec3b a, cv::Vec3b b) //возвращает квадр�
     return sq(a[0] - b[0]) + sq(a[1] - b[1]) + sq(a[2] - b[2]);
 }
 
-double estimateQuality(cv::Mat image, int x, int y, int nx, int ny, uint8_t size_x, uint8_t size_y)
+double estimateQuality(cv::Mat image, int x, int y, int nx, int ny, uint8_t size_x, uint8_t size_y, cv::Mat mask)
 {
     rassert(x >= 0 && x < image.rows, 372489347280017);
     rassert(y >= 0 && y < image.cols, 372489347280018);
     rassert(nx >= 0 && nx < image.rows, 372489347280019);
-    if (ny == image.cols) return 0;
+    if (ny == image.cols || ny < 0) 
+        return 0;
     rassert(ny >= 0 && ny < image.cols, 372489347280020);
+
+    if (isPixelMasked(mask, nx, ny)) return 0;
+
+    if (x < size_x / 2 || x >= image.rows - size_x / 2) return 0;
+    if (y < size_y / 2 || y >= image.cols - size_y / 2) return 0;
+    if (nx < size_x / 2 || nx >= image.rows - size_x / 2) return 0;
+    if (ny < size_y / 2 || ny >= image.cols - size_y / 2) return 0;
 
     double diff = 0;
     for (int i = 0; i < size_x; i++) {
         for (int j = 0; j < size_y; j++) {
             int pixel_x = i - size_x / 2;
             int pixel_y = j - size_y / 2;
+            rassert(x + pixel_x >= 0 && x + pixel_x < image.rows, 38172948719243712);
+            rassert(y + pixel_y >= 0 && y + pixel_y < image.cols, 38172948719243713);
+            rassert(nx + pixel_x >= 0 && nx + pixel_x < image.rows, 38172948719243714);
+            rassert(ny + pixel_y >= 0 && ny + pixel_y < image.cols, "ny=" + std::to_string(ny) + " " + std::to_string(pixel_y) + " " + std::to_string(image.cols));
             diff += pixelQuality(image.at<cv::Vec3b>(x + pixel_x, y + pixel_y), image.at<cv::Vec3b>(nx + pixel_x, ny + pixel_y));
         }
     }
@@ -121,12 +137,12 @@ void run(int caseNumber, std::string caseName) {
                 cv::Vec2i dxy = shifts.at< cv::Vec2i>(i, j); // смотрим какое сейчас смещение для этого пикселя в матрице смещения
                 int nx = i + dxy[0];
                 int ny = j + dxy[1];
-                double currentQuality = estimateQuality(image, i, j, nx, ny, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
+                double currentQuality = estimateQuality(image, i, j, nx, ny, M_SIZE, M_SIZE, mask); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
                 // на квадрат 5х5 приложенный центром к(nx, ny)
 
-                int rx = random.next(-i + 3, mask.rows - i - 3); // создаем случайное смещение относительно нашего пикселя, воспользуйтесь функцией random.next(...);
-                int ry = random.next(-j + 3, mask.cols - j - 3);// (окрестность вокруг пикселя на который укажет смещение - не должна выходить за пределы картинки и не должна быть отмаскирована)
-                double randomQuality = estimateQuality(image, i, j, i + rx, j + ry, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
+                int rx = random.next(-i + M_HALF, mask.rows - i - M_HALF); // создаем случайное смещение относительно нашего пикселя, воспользуйтесь функцией random.next(...);
+                int ry = random.next(-j + M_HALF, mask.cols - j - M_HALF);// (окрестность вокруг пикселя на который укажет смещение - не должна выходить за пределы картинки и не должна быть отмаскирована)
+                double randomQuality = estimateQuality(image, i, j, i + rx, j + ry, M_SIZE, M_SIZE, mask); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
 
                 if (randomQuality > currentQuality || (dxy[0] == 0 && dxy[1] == 0)) { //если новое качество случайной угадайки оказалось лучше старого
                     shifts.at< cv::Vec2i>(i, j)[0] = rx;//то сохраняем(rx, ry) в картинку смещений
@@ -136,15 +152,25 @@ void run(int caseNumber, std::string caseName) {
                 }
                 else {
                     // а что делать если новая случайная гипотеза хуже чем то что у нас уже есть ?
+                    int size = 200;
                     if (i > 0) {
                         if (isPixelMasked(mask, i - 1, j)) {
                             rx = shifts.at< cv::Vec2i>(i - 1, j)[0];
                             ry = shifts.at< cv::Vec2i>(i - 1, j)[1];
-                            randomQuality = estimateQuality(image, i, j, i + rx, j + ry, 5, 5);
-                            if (randomQuality > currentQuality) {
-                                shifts.at< cv::Vec2i>(i, j)[0] = rx;
-                                shifts.at< cv::Vec2i>(i, j)[1] = ry;
-                                image.at<cv::Vec3b>(i, j) = image.at<cv::Vec3b>(i + rx, j + ry);
+                            //int size = std::min(image.rows, image.cols);
+                            while (size > 1)
+                            {
+                                int x_n = random.next(-size / 2, size / 2) + i + rx;
+                                int y_n = random.next(-size / 2, size / 2) + j + ry;
+                                x_n = constrain(x_n, M_HALF, image.rows - M_HALF);
+                                y_n = constrain(y_n, M_HALF, image.cols - M_HALF);
+                                randomQuality = estimateQuality(image, i, j, x_n, y_n, M_SIZE, M_SIZE, mask);
+                                size /= 2;
+                                if (randomQuality > currentQuality) {
+                                    shifts.at< cv::Vec2i>(i, j)[0] = x_n - i;
+                                    shifts.at< cv::Vec2i>(i, j)[1] = y_n - j;
+                                    image.at<cv::Vec3b>(i, j) = image.at<cv::Vec3b>(x_n, y_n);
+                                }
                             }
                         }
                     }
@@ -152,17 +178,70 @@ void run(int caseNumber, std::string caseName) {
                         if (isPixelMasked(mask, i, j - 1)) {
                             rx = shifts.at< cv::Vec2i>(i, j - 1)[0];
                             ry = shifts.at< cv::Vec2i>(i, j - 1)[1];
-                            randomQuality = estimateQuality(image, i, j, i + rx, j + ry, 5, 5);
-                            if (randomQuality > currentQuality) {
-                                shifts.at< cv::Vec2i>(i, j)[0] = rx;
-                                shifts.at< cv::Vec2i>(i, j)[1] = ry;
-                                image.at<cv::Vec3b>(i, j) = image.at<cv::Vec3b>(i + rx, j + ry);
+                            //int size = std::min(image.rows, image.cols);
+                            while (size > 1)
+                            {
+                                int x_n = random.next(-size / 2, size / 2) + i + rx;
+                                int y_n = random.next(-size / 2, size / 2) + j + ry;
+                                x_n = constrain(x_n, M_HALF, image.rows - M_HALF);
+                                y_n = constrain(y_n, M_HALF, image.cols - M_HALF);
+                                randomQuality = estimateQuality(image, i, j, x_n, y_n, M_SIZE, M_SIZE, mask);
+                                size /= 2;
+                                if (randomQuality > currentQuality) {
+                                    shifts.at< cv::Vec2i>(i, j)[0] = x_n - i;
+                                    shifts.at< cv::Vec2i>(i, j)[1] = y_n - j;
+                                    image.at<cv::Vec3b>(i, j) = image.at<cv::Vec3b>(x_n, y_n);
+                                }
+                            }
+                        }
+                    }
+                    if (i < image.rows - 1) {
+                        if (isPixelMasked(mask, i + 1, j)) {
+                            rx = shifts.at< cv::Vec2i>(i + 1, j)[0];
+                            ry = shifts.at< cv::Vec2i>(i + 1, j)[1];
+                            //int size = std::min(image.rows, image.cols);
+                            while (size > 1)
+                            {
+                                int x_n = random.next(-size / 2, size / 2) + i + rx;
+                                int y_n = random.next(-size / 2, size / 2) + j + ry;
+                                x_n = constrain(x_n, M_HALF, image.rows - M_HALF);
+                                y_n = constrain(y_n, M_HALF, image.cols - M_HALF);
+                                randomQuality = estimateQuality(image, i, j, x_n, y_n, M_SIZE, M_SIZE, mask);
+                                size /= 2;
+                                if (randomQuality > currentQuality) {
+                                    shifts.at< cv::Vec2i>(i, j)[0] = x_n - i;
+                                    shifts.at< cv::Vec2i>(i, j)[1] = y_n - j;
+                                    image.at<cv::Vec3b>(i, j) = image.at<cv::Vec3b>(x_n, y_n);
+                                }
+                            }
+                        }
+                    }
+                    if (j < image.cols - 1) {
+                        if (isPixelMasked(mask, i, j + 1)) {
+                            rx = shifts.at< cv::Vec2i>(i, j + 1)[0];
+                            ry = shifts.at< cv::Vec2i>(i, j + 1)[1];
+                            //int size = std::min(image.rows, image.cols);
+                            while (size > 1)
+                            {
+                                int x_n = random.next(-size / 2, size / 2) + i + rx;
+                                int y_n = random.next(-size / 2, size / 2) + j + ry;
+                                x_n = constrain(x_n, M_HALF, image.rows - M_HALF);
+                                y_n = constrain(y_n, M_HALF, image.cols - M_HALF);
+                                randomQuality = estimateQuality(image, i, j, x_n, y_n, M_SIZE, M_SIZE, mask);
+                                size /= 2;
+                                if (randomQuality > currentQuality) {
+                                    shifts.at< cv::Vec2i>(i, j)[0] = x_n - i;
+                                    shifts.at< cv::Vec2i>(i, j)[1] = y_n - j;
+                                    image.at<cv::Vec3b>(i, j) = image.at<cv::Vec3b>(x_n, y_n);
+                                }
                             }
                         }
                     }
                 }
             }
         }
+        cv::imshow("image", image);
+        cv::waitKey(1);
         //не забываем сохранить на диск текущую картинку
         //а как численно оценить насколько уже хорошую картинку мы смогли построить? выведите в консоль это число
     }
@@ -174,10 +253,10 @@ int main() {
     try {
         //run(1, "mic");
         // TODO протестируйте остальные случаи:
-//        run(2, "flowers");
-//        run(3, "baloons");
-//        run(4, "brickwall");
-        run(5, "old_photo");
+        run(2, "flowers");
+        //run(3, "baloons");
+        //run(4, "brickwall");
+        //run(5, "old_photo");
 //        run(6, "your_data"); // TODO придумайте свой случай для тестирования (рекомендуется не очень большое разрешение, например 300х300)
 
         return 0;
